@@ -10,12 +10,20 @@ HEADERS = {
     "Content-Type": "application/json"
 }
 
-# STEP 1: Generate Design
+# STEP 1: Get correct variant IDs
+def get_variants():
+    r = requests.get(
+        "https://api.printify.com/v1/catalog/blueprints/5/print_providers/99/variants.json",
+        headers=HEADERS
+    )
+    result = r.json()
+    print("✅ Variants:", result)
+    return result
+
+# STEP 2: Generate Design
 def generate_design():
     img = Image.new('RGB', (4500, 5400), color='black')
     draw = ImageDraw.Draw(img)
-    
-    # Draw text
     text = "SILENCE\nIS\nPOWER"
     bbox = draw.textbbox((0, 0), text, font=ImageFont.load_default())
     w = bbox[2] - bbox[0]
@@ -23,12 +31,11 @@ def generate_design():
     x = (4500 - w) / 2
     y = (5400 - h) / 2
     draw.text((x, y), text, fill='white')
-    
     buffer = io.BytesIO()
     img.save(buffer, format='PNG')
     return base64.b64encode(buffer.getvalue()).decode()
 
-# STEP 2: Upload Design
+# STEP 3: Upload Design
 def upload_design(img_base64):
     payload = {
         "file_name": "silence_is_power.png",
@@ -43,21 +50,23 @@ def upload_design(img_base64):
     print("✅ Upload result:", result)
     return result["id"]
 
-# STEP 3: Create Product (NO PUBLISH YET)
-def create_product(image_id):
+# STEP 4: Create Product
+def create_product(image_id, variants):
+    # Get first 4 variant IDs only
+    variant_ids = [v["id"] for v in variants["variants"][:4]]
+    print("Using variant IDs:", variant_ids)
+    
     payload = {
         "title": "SILENCE IS POWER Tee",
         "description": "Minimal streetwear. Speak less. Do more.",
         "blueprint_id": 5,
         "print_provider_id": 99,
         "variants": [
-            {"id": 17887, "price": 2999, "is_enabled": True},
-            {"id": 17888, "price": 2999, "is_enabled": True},
-            {"id": 17889, "price": 2999, "is_enabled": True},
-            {"id": 17890, "price": 2999, "is_enabled": True},
+            {"id": vid, "price": 2999, "is_enabled": True}
+            for vid in variant_ids
         ],
         "print_areas": [{
-            "variant_ids": [17887, 17888, 17889, 17890],
+            "variant_ids": variant_ids,
             "placeholders": [{
                 "position": "front",
                 "images": [{
@@ -80,11 +89,13 @@ def create_product(image_id):
     return result["id"]
 
 # RUN
+print("🔍 Getting variants...")
+variants = get_variants()
 print("🎨 Generating design...")
 design = generate_design()
 print("📤 Uploading to Printify...")
 image_id = upload_design(design)
 print("👕 Creating product...")
-product_id = create_product(image_id)
+product_id = create_product(image_id, variants)
 print(f"✅ DONE! Product ID: {product_id}")
 print("👀 Go check Printify dashboard to preview!")
