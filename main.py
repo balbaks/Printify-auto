@@ -24,13 +24,19 @@ def get_variants():
 def generate_design():
     img = Image.new('RGB', (4500, 5400), color='black')
     draw = ImageDraw.Draw(img)
-    text = "SILENCE\nIS\nPOWER"
-    bbox = draw.textbbox((0, 0), text, font=ImageFont.load_default())
-    w = bbox[2] - bbox[0]
-    h = bbox[3] - bbox[1]
-    x = (4500 - w) / 2
-    y = (5400 - h) / 2
-    draw.text((x, y), text, fill='white')
+    
+    # Big bold text
+    font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 600)
+    
+    lines = ["SILENCE", "IS", "POWER"]
+    y = 1800
+    for line in lines:
+        bbox = draw.textbbox((0, 0), line, font=font)
+        w = bbox[2] - bbox[0]
+        x = (4500 - w) / 2
+        draw.text((x, y), line, fill='white', font=font)
+        y += 700
+    
     buffer = io.BytesIO()
     img.save(buffer, format='PNG')
     return base64.b64encode(buffer.getvalue()).decode()
