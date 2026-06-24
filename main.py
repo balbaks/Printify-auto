@@ -10,41 +10,27 @@ HEADERS = {
     "Content-Type": "application/json"
 }
 
-# STEP 1: Get correct variant IDs
-def get_variants():
-    r = requests.get(
-        "https://api.printify.com/v1/catalog/blueprints/5/print_providers/99/variants.json",
-        headers=HEADERS
-    )
-    result = r.json()
-    print("✅ Variants:", result)
-    return result
-
-# STEP 2: Generate Design
 def generate_design():
-    img = Image.new('RGB', (4500, 5400), color='black')
+    # Transparent background!
+    img = Image.new('RGBA', (4500, 5400), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
-    
-    # Big bold text
-    font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 600)
-    
+    font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 900)
     lines = ["SILENCE", "IS", "POWER"]
-    y = 1800
+    y = 1200
     for line in lines:
         bbox = draw.textbbox((0, 0), line, font=font)
         w = bbox[2] - bbox[0]
         x = (4500 - w) / 2
-        draw.text((x, y), line, fill='white', font=font)
-        y += 700
-    
+        # WHITE text for black tee
+        draw.text((x, y), line, fill=(255, 255, 255, 255), font=font)
+        y += 1000
     buffer = io.BytesIO()
     img.save(buffer, format='PNG')
     return base64.b64encode(buffer.getvalue()).decode()
 
-# STEP 3: Upload Design
 def upload_design(img_base64):
     payload = {
-        "file_name": "silence_is_power.png",
+        "file_name": "silence_is_power_v2.png",
         "contents": img_base64
     }
     r = requests.post(
@@ -53,15 +39,13 @@ def upload_design(img_base64):
         json=payload
     )
     result = r.json()
-    print("✅ Upload result:", result)
+    print("✅ Upload:", result)
     return result["id"]
 
-# STEP 4: Create Product
-def create_product(image_id, variants):
-    # Get first 4 variant IDs only
-    variant_ids = [v["id"] for v in variants["variants"][:4]]
-    print("Using variant IDs:", variant_ids)
-    
+def create_product(image_id):
+    # BLACK tee variant IDs only
+    black_variants = [17426, 17427, 17428, 17429, 17430, 17431, 17432, 17433]
+
     payload = {
         "title": "SILENCE IS POWER Tee",
         "description": "Minimal streetwear. Speak less. Do more.",
@@ -69,17 +53,17 @@ def create_product(image_id, variants):
         "print_provider_id": 99,
         "variants": [
             {"id": vid, "price": 2999, "is_enabled": True}
-            for vid in variant_ids
+            for vid in black_variants
         ],
         "print_areas": [{
-            "variant_ids": variant_ids,
+            "variant_ids": black_variants,
             "placeholders": [{
                 "position": "front",
                 "images": [{
                     "id": image_id,
                     "x": 0.5,
                     "y": 0.5,
-                    "scale": 0.8,
+                    "scale": 1.0,
                     "angle": 0
                 }]
             }]
@@ -91,17 +75,15 @@ def create_product(image_id, variants):
         json=payload
     )
     result = r.json()
-    print("✅ Product created:", result)
+    print("✅ Product:", result.get("id"))
     return result["id"]
 
 # RUN
-print("🔍 Getting variants...")
-variants = get_variants()
 print("🎨 Generating design...")
 design = generate_design()
-print("📤 Uploading to Printify...")
+print("📤 Uploading...")
 image_id = upload_design(design)
-print("👕 Creating product...")
-product_id = create_product(image_id, variants)
-print(f"✅ DONE! Product ID: {product_id}")
-print("👀 Go check Printify dashboard to preview!")
+print("👕 Creating BLACK tee...")
+product_id = create_product(image_id)
+print(f"✅ DONE! ID: {product_id}")
+print("👀 Check Printify!")
